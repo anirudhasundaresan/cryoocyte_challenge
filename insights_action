@@ -1,0 +1,15 @@
+First glance thoughts:
+- looks like a regression problem
+- all values in the training matrix close to 0 - maybe they're already scaled?
+- looks cleaned; although the test data has a point missing - maybe more missing data?
+
+Aims:
+- do visualizations
+- don't touch the test data; do all work on the training data alone - split into train and val.
+- check patterns/ correlations between different columns and targets; and between columns
+- PCA? - looks like there are many dimensions
+- two models required: random forest regressors? SVM regressors? - google for different types of regressors?
+- try a NN approach to this as well due to a lot of dimensionality - only after EDA & other simple models
+- do everything with pandas dataframe - easier for merging with ML models
+- go through scikit-learn book and see if you have covered all the methods
+- use pipeline from sklearn for the initial preprocessing 
