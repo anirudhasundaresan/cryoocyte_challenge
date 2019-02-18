@@ -1,0 +1,9 @@
+Problem statement:
+
+- Here are the links to the problem data set to work on. It contains multiple explaining columns and a single target (y) to predict.
+We are asking for two models and a text description (no more than one page) comparing the two models to one another, discussing which one of the two you would suggest we use and why.
+- Use the attached "test" and "train" csv files: the train.csv file to develop and validate your models and then the test.csv to create two submissions (one from each model)
+that we will score. The submissions should be a single new line delimited file with your predictions.
+
+https://www.dropbox.com/s/mfkfx87yxcgyqe6/train_.csv?dl=0
+https://www.dropbox.com/s/c5w7tc3hmbo9r9m/test_.csv?dl=0
