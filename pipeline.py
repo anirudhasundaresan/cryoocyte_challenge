@@ -1,3 +1,5 @@
+import math
+import copy
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -8,10 +10,19 @@ from sklearn.linear_model import LassoCV
 from sklearn.linear_model import RidgeCV
 from sklearn.linear_model import ElasticNetCV
 from sklearn.neural_network import MLPRegressor
+from sklearn.metrics import mean_squared_error
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics.scorer import make_scorer
 
 # Reading in the data
-train_csv = pd.read_csv("train_.csv")
-# train_csv = pd.read_csv("train_anirudha_train.csv") - for my validation
+# train_csv = pd.read_csv("train_.csv")
+
+# for my validation
+train_csv = pd.read_csv("train_anirudha_train.csv")
+
+# shuffling the data - just to make sure
+train_csv = train_csv.sample(frac=1).reset_index(drop=True)
 
 # train_csv_dims = train_csv.shape
 # print("Shape of the train csv file is: ", train_csv_dims)
@@ -34,6 +45,13 @@ for col in train_csv:
         # verifies that x13, x68 and x91 are indeed the only categorical values
 '''
 
+'''
+# not much you can infer from this distribution below; without knowing domain
+print(train_csv['x13'].value_counts())
+print(train_csv['x68'].value_counts())
+print(train_csv['x91'].value_counts())
+'''
+
 # get total number of rows with nans in them
 '''
 inds = pd.isnull(train_csv).any(1).nonzero()[0]
@@ -48,12 +66,20 @@ train_csv.dropna(inplace=True)
 cat_train_csv = pd.concat([train_csv['x13'], train_csv['x68'], train_csv['x91']], axis=1)
 cat_train_csv.reset_index(inplace=True, drop=True)
 label_train_csv = train_csv['y']
-train_csv.drop(['x13', 'x68', 'x91', 'y'], axis=1, inplace=True)
+train_csv.drop(['x13', 'x68', 'x91'], axis=1, inplace=True)
+
+# Explore correlations between features and target
+x = train_csv[train_csv.columns[1:]].corr()['y'][:]
+inds = x.index.tolist()
+vals = x.tolist()
+print("Features which are most correlated with target: ", sorted(inds, key=lambda x: vals[inds.index(x)])[-10:][::-1][1:])
+print("Their corresponding abs. correlation values: ", sorted(vals, reverse=True)[1:10])
 
 # y = train_csv[train_csv.apply(lambda x :(x-x.mean()).abs()<(3*x.std()) ).all(1)] # we can do this to check for outliers since this is now scaled data (looks like a lot of outliers)
 # removing outliers from the data is questionable, so I will leave it as it is.
+train_csv.drop(['y'], axis=1, inplace=True)
 
-# Explore correlations between features, and between features and targets
+# Explore correlations between features
 corr = train_csv.corr()
 
 def get_redundant_pairs(df):
@@ -71,7 +97,9 @@ def get_top_abs_correlations(df, n=5):
     return au_corr[0:n]
 
 # print("Top Absolute Correlations")
-corr_stats = get_top_abs_correlations(train_csv, 10) # print(corr_stats) - to see which all features are correlated with one another the most
+corr_stats = get_top_abs_correlations(train_csv, 20) # print(corr_stats) - to see which all features are correlated with one another the most
+print(corr_stats)
+
 # looks like 'x25' is most correlated with y and there are some features that are correlated with one another.
 
 # sns.heatmap(corr, xticklabels=corr.columns, yticklabels=corr.columns)
@@ -94,17 +122,39 @@ train_csv_final = pd.concat([pd.DataFrame(train_csv_transformed), dummy_train], 
 
 print("Training scores: ")
 
+# trying KNNregressor since once reduced, there are only ~45 dims
+cv_scores = []
+neighbors = [x for x in range(1,25) if x%2!=0]
+for k in neighbors:
+    knn = KNeighborsRegressor(n_neighbors=k)
+    scores = cross_val_score(knn, train_csv_final, label_train_csv, cv=10, scoring=make_scorer(mean_squared_error))
+    cv_scores.append(math.sqrt(scores.mean())) # appending with RMSE means
+    # cv_scores.append(scores.mean())
+optimal_k = neighbors[cv_scores.index(min(cv_scores))]
+print("The optimal number of neighbors is: ", optimal_k)
+# plot misclassification error vs k
+plt.plot(neighbors, cv_scores)
+plt.xlabel('Number of Neighbors K')
+plt.ylabel('RMSE KNNRegressor')
+plt.show()
+# refit with optimal_k
+refit = KNeighborsRegressor(n_neighbors=optimal_k).fit(train_csv_final, label_train_csv)
+print("KNeighborsRegressor R^2 score: ", refit.score(train_csv_final, label_train_csv))
+print("KNeighborsRegressor RMSE score: ", math.sqrt(mean_squared_error(refit.predict(train_csv_final), label_train_csv)))
+
 # trying Ridge because we need regularization to prevent overfitting
 ridge = RidgeCV(alphas=[1e-3, 1e-2, 1e-1, 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10]).fit(train_csv_final, label_train_csv)
 # print("Estimated regularization parameter: ", ridge.alpha_)
 # print("Weight vectors:", ridge.coef_)
 print("Ridge R^2 score: ", ridge.score(train_csv_final, label_train_csv))
+print("Ridge RMSE score: ", math.sqrt(mean_squared_error(ridge.predict(train_csv_final), label_train_csv)))
 
 # trying Lasso because we know some features need to be removed
 lasso = LassoCV(alphas=[1e-3, 1e-2, 1e-1, 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10]).fit(train_csv_final, label_train_csv)
 # print("Estimated regularization parameter: ", lasso.alpha_)
 # print("Weight vectors:", lasso.coef_)
 print("Lasso R^2 score: ", lasso.score(train_csv_final, label_train_csv))
+print("Lasso RMSE score: ", math.sqrt(mean_squared_error(lasso.predict(train_csv_final), label_train_csv)))
 
 # trying elastic net regression since there is correlation between features. We might not want to fully get rid of transformed PCA features
 regr = ElasticNetCV(l1_ratio=[.1, .3, .5, .7, .9, .95, .99, 1], cv=10, tol=0.00001).fit(train_csv_final, label_train_csv)
@@ -113,15 +163,17 @@ regr = ElasticNetCV(l1_ratio=[.1, .3, .5, .7, .9, .95, .99, 1], cv=10, tol=0.000
 # print("MSE path", regr.mse_path_)
 # print("Number of iters: ", regr.n_iter_)
 print("ElasticNet R^2 score: ", regr.score(train_csv_final, label_train_csv))
+print("ElasticNet RMSE score: ", math.sqrt(mean_squared_error(regr.predict(train_csv_final), label_train_csv)))
 
 # trying MLP to fit the non-linearity
 mlp_regr = MLPRegressor(hidden_layer_sizes=(10, 2)).fit(train_csv_final, label_train_csv)
 # print("Loss: ", mlp_regr.loss_)
 # print("Weight mx: ", mlp_regr.coefs_)
 print("MLP R^2 score: ", mlp_regr.score(train_csv_final, label_train_csv))
+print("MLPRegressor RMSE score: ", math.sqrt(mean_squared_error(mlp_regr.predict(train_csv_final), label_train_csv)))
 print()
 
-'''
+
 ### Validation phase (to be commented out when finalizing model - this phase used only for tuning)
 valid_csv = pd.read_csv("train_anirudha_val.csv")
 valid_csv.dropna(inplace=True)
@@ -138,16 +190,17 @@ dummy_valid = pd.get_dummies(data=cat_valid_csv, drop_first=True)
 valid_csv_final = pd.concat([pd.DataFrame(valid_csv_transformed), dummy_valid], axis=1)
 
 print("Validation scores: ")
-elastic_predict = regr.predict(valid_csv_final)
-ridge_predict = ridge.predict(valid_csv_final)
-lasso_predict = lasso.predict(valid_csv_final)
-mlp_predict = mlp_regr.predict(valid_csv_final)
+print("KNeighborsRegressor R^2 score: ", refit.score(valid_csv_final, valid_labels))
+print("KNeighborsRegressor RMSE score: ", math.sqrt(mean_squared_error(refit.predict(valid_csv_final), valid_labels)))
 print("Ridge R^2 score: ", ridge.score(valid_csv_final, valid_labels))
+print("Ridge RMSE score: ", math.sqrt(mean_squared_error(ridge.predict(valid_csv_final), valid_labels)))
 print("Lasso R^2 score: ", lasso.score(valid_csv_final, valid_labels))
+print("Lasso RMSE score: ", math.sqrt(mean_squared_error(lasso.predict(valid_csv_final), valid_labels)))
 print("ElasticNet R^2 score: ", regr.score(valid_csv_final, valid_labels))
+print("ElasticNet RMSE score: ", math.sqrt(mean_squared_error(regr.predict(valid_csv_final), valid_labels)))
 print("MLP R^2 score: ", mlp_regr.score(valid_csv_final, valid_labels))
+print("MLPRegressor RMSE score: ", math.sqrt(mean_squared_error(mlp_regr.predict(valid_csv_final), valid_labels)))
 print()
-'''
 
 
 ### Testing phase (to be used for final submission)
@@ -174,12 +227,9 @@ dummy_test = pd.get_dummies(data=cat_test_csv, drop_first=True)
 test_csv_final = pd.concat([pd.DataFrame(test_csv_transformed), dummy_test], axis=1)
 
 print("Test results: ")
-elastic_predict = regr.predict(test_csv_final)
-ridge_predict = ridge.predict(test_csv_final)
-lasso_predict = lasso.predict(test_csv_final)
-mlp_predict = mlp_regr.predict(test_csv_final)
-print("Ridge results: ", ridge_predict)
-print("Lasso R^2 score: ", lasso_predict)
-print("ElasticNet results: ", elastic_predict)
-print("MLP results: ", mlp_predict)
+print("KNeighborsRegressor results: ", refit.predict(test_csv_final))
+print("Ridge results: ", ridge.predict(test_csv_final))
+print("Lasso results: ", lasso.predict(test_csv_final))
+print("ElasticNet results: ", regr.predict(test_csv_final))
+print("MLP results: ", mlp_regr.predict(test_csv_final))
 print()
