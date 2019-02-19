@@ -45,7 +45,6 @@ print("Modifying training set to remove rows with NaNs, so training set now with
 
 # we need to check for outliers in the data for each column
 # let us keep the categorical columns separate and work on the numeric data
-train_all = train_csv.copy()
 cat_train_csv = pd.concat([train_csv['x13'], train_csv['x68'], train_csv['x91']], axis=1)
 cat_train_csv.reset_index(inplace=True, drop=True)
 
@@ -92,8 +91,9 @@ sns.heatmap(corr, xticklabels=corr.columns, yticklabels=corr.columns)
 # use pipeline for this
 scaler = StandardScaler()
 train_csv[train_csv.columns] = scaler.fit_transform(train_csv[train_csv.columns])
+
 # it would help to model our task by using PCA, and to decide the number of components for PCA, we need the PCA curve with the explained variance
-pca = PCA(n_components=0.95, svd_solver='full') # make sure we have 95% variance explained when we transform
+pca = PCA(n_components=0.97, svd_solver='full') # make sure we have 95% variance explained when we transform
 train_csv_transformed = pca.fit_transform(train_csv)
 
 
@@ -119,9 +119,40 @@ print("Mean CV score: ", rmse_scores.mean())
 ridge = RidgeCV(alphas=[1e-3, 1e-2, 1e-1, 1]).fit(train_csv_final, label_train_csv)
 print("Ridge R^2 score: ", ridge.score(train_csv_final, label_train_csv))
 
-mlp_regr = MLPRegressor(hidden_layer_sizes=(15, 12, 6))
+mlp_regr = MLPRegressor(hidden_layer_sizes=(15, 10, 5))
 mlp_regr.fit(train_csv_final, label_train_csv)
 print("MLP R^2 score: ", mlp_regr.score(train_csv_final, label_train_csv))
+
+
+### Validation phase
+
+valid_csv = pd.read_csv("train_anirudha.csv")
+valid_csv.dropna(inplace=True)
+valid_labels = valid_csv['y']
+
+# label_test_csv
+cat_valid_csv = pd.concat([valid_csv['x13'], valid_csv['x68'], valid_csv['x91']], axis=1)
+cat_valid_csv.reset_index(inplace=True, drop=True)
+
+valid_csv.drop(['x13', 'x68', 'x91', 'y'], axis=1, inplace=True)
+
+valid_csv[valid_csv.columns] = scaler.transform(valid_csv[valid_csv.columns])
+# it would help to model our task by using PCA, and to decide the number of components for PCA, we need the PCA curve with the explained variance
+# pca = PCA(n_components=0.95, svd_solver='full') # make sure we have 95% variance explained when we transform
+valid_csv_transformed = pca.transform(valid_csv)
+X_ = pd.get_dummies(data=cat_valid_csv, drop_first=True)
+valid_csv_final = pd.concat([pd.DataFrame(valid_csv_transformed), X_], axis=1)
+elastic_predict = regr.predict(valid_csv_final)
+ridge_predict = ridge.predict(valid_csv_final)
+mlp_predict = mlp_regr.predict(valid_csv_final)
+print("Valid results")
+print(spatial.distance.cosine(elastic_predict, valid_labels))
+print(spatial.distance.cosine(mlp_predict, valid_labels))
+print(spatial.distance.cosine(elastic_predict, valid_labels))
+print("MLP R^2 score: ", mlp_regr.score(valid_csv_final, valid_labels))
+print("Ridge R^2 score: ", ridge.score(valid_csv_final, valid_labels))
+print("ElasticNet R^2 score: ", regr.score(valid_csv_final, valid_labels))
+
 
 ### Testing phase
 test_csv = pd.read_csv("test_.csv")
@@ -154,6 +185,7 @@ test_csv_final = pd.concat([pd.DataFrame(test_csv_transformed), X_], axis=1)
 elastic_predict = regr.predict(test_csv_final)
 ridge_predict = ridge.predict(test_csv_final)
 mlp_predict = mlp_regr.predict(test_csv_final)
+print("Test results: ")
 print(spatial.distance.cosine(elastic_predict, ridge_predict))
 print(spatial.distance.cosine(mlp_predict, ridge_predict))
 print(spatial.distance.cosine(elastic_predict, mlp_predict))
