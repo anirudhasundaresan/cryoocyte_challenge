@@ -1,7 +1,7 @@
 First glance thoughts:
-- looks like a regression problem
+x looks like a regression problem
 - all values in the training matrix close to 0 - maybe they're already scaled?
-- looks cleaned; although the test data has a point missing - maybe more missing data?
+x looks cleaned; although the test data has a point missing - maybe more missing data?
 
 Aims:
 - do visualizations
@@ -12,7 +12,8 @@ x PCA? - looks like there are many dimensions
 - try a NN approach to this as well due to a lot of dimensionality - only after EDA & other simple models
 x do everything with pandas dataframe - easier for merging with ML models
 - go through scikit-learn book and see if you have covered all the methods
-- use pipeline from sklearn for the initial preprocessing
+x use pipeline from sklearn for the initial preprocessing - not needed here 
 - compare with what you had done for Asana test and use that too
 - check for any outliers in any column?
 x while testing, we must standardize the test according to the training set
+- use the same metric that they will be using for my codes (other than R2?)
