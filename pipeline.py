@@ -1,6 +1,12 @@
+from sklearn.linear_model import ElasticNetCV
+from sklearn.cross_validation import cross_val_score
+from sklearn.linear_model import LinearRegression
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+import numpy as np
+from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 train_csv = pd.read_csv("train_.csv")
@@ -35,20 +41,21 @@ print("Modifying training set to remove rows with NaNs, so training set now with
 # let us keep the categorical columns separate and work on the numeric data
 train_all = train_csv.copy()
 cat_train_csv = pd.concat([train_csv['x13'], train_csv['x68'], train_csv['x91']], axis=1)
+cat_train_csv.reset_index(inplace=True, drop=True)
+
+label_train_csv = train_csv['y']
+
 del train_csv['x13']
 del train_csv['x68']
 del train_csv['x91']
+del train_csv['y']
 
-# let us scale data in all columns; regression anyway requires scaled data; RF does not require scaling
+# let us scale data in all columns; regression anyway requires scaled data; RF does not require scaling. PCA must be done only after scaling
 # train_csv has only numerical values now; remember to use cat_train_csv while building the model
-summary = train_csv.describe() # returns a dataframe
-# use these below to scale and transform the test data as well
-mean_train = {col:summary[col]['mean'] for col in summary}
-std_train = {col:summary[col]['std'] for col in summary}
 
 scaler = StandardScaler()
 train_csv[train_csv.columns] = scaler.fit_transform(train_csv[train_csv.columns])
-
+# X_test = scaler.transform(X_test)
 # y = train_csv[train_csv.apply(lambda x :(x-x.mean()).abs()<(3*x.std()) ).all(1)] # we can do this to check for outliers since this is now scaled data
 # len(y) = 6712x98 which means that there are some outlier data - not sure if we should remove outliers since they might be important
 
@@ -79,6 +86,33 @@ print(corr_stats)
 # looks like x25 is most correlated with y and there are some features that are correlated with one another.
 
 sns.heatmap(corr, xticklabels=corr.columns, yticklabels=corr.columns)
-plt.show() # a bit dense, not much information can be gained; there are some highly correlated variables
+# plt.show() # a bit dense, not much information can be gained; there are some highly correlated variables
+
 
 # it would help to model our task by using PCA, and to decide the number of components for PCA, we need the PCA curve with the explained variance
+pca = PCA(n_components=0.95, svd_solver='full') # make sure we have 95% variance explained when we transform
+train_csv_transformed = pca.fit_transform(train_csv)
+
+
+X = pd.get_dummies(data=cat_train_csv, drop_first=True)
+train_csv_final = pd.concat([pd.DataFrame(train_csv_transformed), X], axis=1)
+
+# let us try regression; do cross validation
+regr = ElasticNetCV(cv=10, random_state=0)
+regr.fit(train_csv_final, label_train_csv)
+print(regr.score(train_csv_final, label_train_csv))
+
+'''
+lm = LinearRegression()
+mse_scores = -cross_val_score(lm, train_csv_transformed, label_train_csv, cv=10, scoring='neg_mean_squared_error')
+# fix the sign of MSE scores
+rmse_scores = np.sqrt(mse_scores)
+print(rmse_scores)
+# calculate the average RMSE
+print(rmse_scores.mean())
+# do elastic since we want feature selection and regularization
+'''
+
+
+# print(x)
+# print(y)
