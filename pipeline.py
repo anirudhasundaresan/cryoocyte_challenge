@@ -5,7 +5,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-
+from scipy import spatial
+from sklearn.neural_network import MLPRegressor
 from sklearn.linear_model import RidgeCV
 from sklearn.linear_model import LinearRegression
 from sklearn.decomposition import PCA
@@ -50,10 +51,7 @@ cat_train_csv.reset_index(inplace=True, drop=True)
 
 label_train_csv = train_csv['y']
 
-del train_csv['x13']
-del train_csv['x68']
-del train_csv['x91']
-del train_csv['y']
+train_csv.drop(['x13', 'x68', 'x91', 'y'], axis=1, inplace=True)
 
 # let us scale data in all columns; regression anyway requires scaled data; RF does not require scaling. PCA must be done only after scaling
 # train_csv has only numerical values now; remember to use cat_train_csv while building the model
@@ -66,8 +64,8 @@ del train_csv['y']
 
 print("Correlation Matrix")
 corr = train_csv.corr()
-print(corr)
-print()
+# print(corr)
+# print()
 
 def get_redundant_pairs(df):
     pairs_to_drop = set()
@@ -85,7 +83,7 @@ def get_top_abs_correlations(df, n=5):
 
 print("Top Absolute Correlations")
 corr_stats = get_top_abs_correlations(train_csv, 10)
-print(corr_stats)
+# print(corr_stats)
 # looks like x25 is most correlated with y and there are some features that are correlated with one another.
 
 sns.heatmap(corr, xticklabels=corr.columns, yticklabels=corr.columns)
@@ -105,9 +103,10 @@ train_csv_final = pd.concat([pd.DataFrame(train_csv_transformed), X], axis=1)
 # let us try regression; do cross validation
 regr = ElasticNetCV(cv=10, random_state=0)
 regr.fit(train_csv_final, label_train_csv)
-print("R^2 score: ", regr.score(train_csv_final, label_train_csv))
+print("ElasticNet R^2 score: ", regr.score(train_csv_final, label_train_csv))
+# need other metrics other than R2
 
-
+'''
 lm = LinearRegression()
 mse_scores = -cross_val_score(lm, train_csv_final, label_train_csv, cv=10, scoring='neg_mean_squared_error')
 # fix the sign of MSE scores
@@ -115,17 +114,14 @@ rmse_scores = np.sqrt(mse_scores)
 print(rmse_scores)
 # calculate the average RMSE
 print("Mean CV score: ", rmse_scores.mean())
-
+'''
 
 ridge = RidgeCV(alphas=[1e-3, 1e-2, 1e-1, 1]).fit(train_csv_final, label_train_csv)
-ridge.score(train_csv_final, label_train_csv)
+print("Ridge R^2 score: ", ridge.score(train_csv_final, label_train_csv))
 
-
-
-
-
-
-
+mlp_regr = MLPRegressor(hidden_layer_sizes=(15, 12, 6))
+mlp_regr.fit(train_csv_final, label_train_csv)
+print("MLP R^2 score: ", mlp_regr.score(train_csv_final, label_train_csv))
 
 ### Testing phase
 test_csv = pd.read_csv("test_.csv")
@@ -146,9 +142,8 @@ print("Shape of the test csv file is: ", test_csv_dims) # 8000 x 101
 # label_test_csv
 cat_test_csv = pd.concat([test_csv['x13'], test_csv['x68'], test_csv['x91']], axis=1)
 cat_test_csv.reset_index(inplace=True, drop=True)
-del test_csv['x13']
-del test_csv['x68']
-del test_csv['x91']
+
+test_csv.drop(['x13', 'x68', 'x91'], axis=1, inplace=True)
 
 test_csv[test_csv.columns] = scaler.transform(test_csv[test_csv.columns])
 # it would help to model our task by using PCA, and to decide the number of components for PCA, we need the PCA curve with the explained variance
@@ -158,3 +153,7 @@ X_ = pd.get_dummies(data=cat_test_csv, drop_first=True)
 test_csv_final = pd.concat([pd.DataFrame(test_csv_transformed), X_], axis=1)
 elastic_predict = regr.predict(test_csv_final)
 ridge_predict = ridge.predict(test_csv_final)
+mlp_predict = mlp_regr.predict(test_csv_final)
+print(spatial.distance.cosine(elastic_predict, ridge_predict))
+print(spatial.distance.cosine(mlp_predict, ridge_predict))
+print(spatial.distance.cosine(elastic_predict, mlp_predict))
