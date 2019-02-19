@@ -1,17 +1,18 @@
-import warnings
-warnings.filterwarnings("ignore")
-import seaborn as sns
-import pandas as pd
 import numpy as np
+import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.neural_network import MLPRegressor
-from sklearn.linear_model import RidgeCV
-from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.linear_model import LassoCV
+from sklearn.linear_model import RidgeCV
 from sklearn.linear_model import ElasticNetCV
+from sklearn.neural_network import MLPRegressor
 
 # Reading in the data
 train_csv = pd.read_csv("train_.csv")
+# train_csv = pd.read_csv("train_anirudha_train.csv") - for my validation
+
 # train_csv_dims = train_csv.shape
 # print("Shape of the train csv file is: ", train_csv_dims)
 
@@ -40,7 +41,7 @@ print("Number of rows in which NaNs are present: ", len(inds)) - there are only 
 # else, I could have tried imputation techniques. For now, best to remove them so that the model that is developed is generalizable as well.
 '''
 train_csv.dropna(inplace=True)
-print("Modifying training set to remove rows with NaNs, so training set now with", set(train_csv.count().tolist()), 'rows.') # there are now 7927 rows for the training set in train_csv.
+# print("Modifying training set to remove rows with NaNs, so training set now with", set(train_csv.count().tolist()), 'rows.') # there are now 7927 rows for the training set in train_csv.
 
 # we need to check for outliers in the data for each column
 # let us keep the categorical columns separate and work on the numeric data
@@ -73,7 +74,7 @@ def get_top_abs_correlations(df, n=5):
 corr_stats = get_top_abs_correlations(train_csv, 10) # print(corr_stats) - to see which all features are correlated with one another the most
 # looks like 'x25' is most correlated with y and there are some features that are correlated with one another.
 
-sns.heatmap(corr, xticklabels=corr.columns, yticklabels=corr.columns)
+# sns.heatmap(corr, xticklabels=corr.columns, yticklabels=corr.columns)
 # plt.show() - a bit dense, not much information can be gained; there are some highly correlated variables; will need PCA fit_transform.
 
 # main preprocessing before building model
@@ -82,6 +83,9 @@ scaler = StandardScaler()
 train_csv[train_csv.columns] = scaler.fit_transform(train_csv[train_csv.columns])
 pca = PCA(n_components=0.99, svd_solver='full') # make sure we have 95% variance explained when we transform
 train_csv_transformed = pca.fit_transform(train_csv)
+# plt.scatter(train_csv_transformed[0], train_csv_transformed[1])
+# plt.show()
+# print(pca.explained_variance_)
 dummy_train = pd.get_dummies(data=cat_train_csv, drop_first=True)
 
 ### Training phase
@@ -89,22 +93,37 @@ dummy_train = pd.get_dummies(data=cat_train_csv, drop_first=True)
 train_csv_final = pd.concat([pd.DataFrame(train_csv_transformed), dummy_train], axis=1)
 
 print("Training scores: ")
-# trying elastic net regression since there is correlation between features. We might not want to fully get rid of transformed PCA features
-regr = ElasticNetCV(cv=10, random_state=0)
-regr.fit(train_csv_final, label_train_csv)
-print("ElasticNet R^2 score: ", regr.score(train_csv_final, label_train_csv))
 
-ridge = RidgeCV(alphas=[1e-3, 1e-2, 1e-1, 1]).fit(train_csv_final, label_train_csv)
+# trying Ridge because we need regularization to prevent overfitting
+ridge = RidgeCV(alphas=[1e-3, 1e-2, 1e-1, 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10]).fit(train_csv_final, label_train_csv)
+# print("Estimated regularization parameter: ", ridge.alpha_)
+# print("Weight vectors:", ridge.coef_)
 print("Ridge R^2 score: ", ridge.score(train_csv_final, label_train_csv))
 
-mlp_regr = MLPRegressor(hidden_layer_sizes=(13, 13, 13))
-mlp_regr.fit(train_csv_final, label_train_csv)
+# trying Lasso because we know some features need to be removed
+lasso = LassoCV(alphas=[1e-3, 1e-2, 1e-1, 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10]).fit(train_csv_final, label_train_csv)
+# print("Estimated regularization parameter: ", lasso.alpha_)
+# print("Weight vectors:", lasso.coef_)
+print("Lasso R^2 score: ", lasso.score(train_csv_final, label_train_csv))
+
+# trying elastic net regression since there is correlation between features. We might not want to fully get rid of transformed PCA features
+regr = ElasticNetCV(l1_ratio=[.1, .3, .5, .7, .9, .95, .99, 1], cv=10, tol=0.00001).fit(train_csv_final, label_train_csv)
+# print("ElasticNetCV results")
+# print("Coefficients are: ", regr.coef_)
+# print("MSE path", regr.mse_path_)
+# print("Number of iters: ", regr.n_iter_)
+print("ElasticNet R^2 score: ", regr.score(train_csv_final, label_train_csv))
+
+# trying MLP to fit the non-linearity
+mlp_regr = MLPRegressor(hidden_layer_sizes=(10, 2)).fit(train_csv_final, label_train_csv)
+# print("Loss: ", mlp_regr.loss_)
+# print("Weight mx: ", mlp_regr.coefs_)
 print("MLP R^2 score: ", mlp_regr.score(train_csv_final, label_train_csv))
 print()
 
-
+'''
 ### Validation phase (to be commented out when finalizing model - this phase used only for tuning)
-valid_csv = pd.read_csv("train_anirudha.csv")
+valid_csv = pd.read_csv("train_anirudha_val.csv")
 valid_csv.dropna(inplace=True)
 valid_labels = valid_csv['y']
 cat_valid_csv = pd.concat([valid_csv['x13'], valid_csv['x68'], valid_csv['x91']], axis=1)
@@ -121,11 +140,15 @@ valid_csv_final = pd.concat([pd.DataFrame(valid_csv_transformed), dummy_valid], 
 print("Validation scores: ")
 elastic_predict = regr.predict(valid_csv_final)
 ridge_predict = ridge.predict(valid_csv_final)
+lasso_predict = lasso.predict(valid_csv_final)
 mlp_predict = mlp_regr.predict(valid_csv_final)
-print("ElasticNet R^2 score: ", regr.score(valid_csv_final, valid_labels))
 print("Ridge R^2 score: ", ridge.score(valid_csv_final, valid_labels))
+print("Lasso R^2 score: ", lasso.score(valid_csv_final, valid_labels))
+print("ElasticNet R^2 score: ", regr.score(valid_csv_final, valid_labels))
 print("MLP R^2 score: ", mlp_regr.score(valid_csv_final, valid_labels))
 print()
+'''
+
 
 ### Testing phase (to be used for final submission)
 test_csv = pd.read_csv("test_.csv")
@@ -153,8 +176,10 @@ test_csv_final = pd.concat([pd.DataFrame(test_csv_transformed), dummy_test], axi
 print("Test results: ")
 elastic_predict = regr.predict(test_csv_final)
 ridge_predict = ridge.predict(test_csv_final)
+lasso_predict = lasso.predict(test_csv_final)
 mlp_predict = mlp_regr.predict(test_csv_final)
-print("ElasticNet results: ", elastic_predict)
 print("Ridge results: ", ridge_predict)
+print("Lasso R^2 score: ", lasso_predict)
+print("ElasticNet results: ", elastic_predict)
 print("MLP results: ", mlp_predict)
 print()

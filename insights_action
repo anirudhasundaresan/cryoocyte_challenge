@@ -1,19 +1,19 @@
 First glance thoughts:
 x looks like a regression problem
-- all values in the training matrix close to 0 - maybe they're already scaled?
 x looks cleaned; although the test data has a point missing - maybe more missing data?
 
 Aims:
 - do visualizations
-- don't touch the test data; do all work on the training data alone - split into train and val.
 - check patterns/ correlations between different columns and targets; and between columns
-x PCA? - looks like there are many dimensions
 - two models required: random forest regressors? SVM regressors? - google for different types of regressors?
-- try a NN approach to this as well due to a lot of dimensionality - only after EDA & other simple models
-x do everything with pandas dataframe - easier for merging with ML models
 - go through scikit-learn book and see if you have covered all the methods
-x use pipeline from sklearn for the initial preprocessing - not needed here 
 - compare with what you had done for Asana test and use that too
 - check for any outliers in any column?
-x while testing, we must standardize the test according to the training set
 - use the same metric that they will be using for my codes (other than R2?)
+- read scikit-learn book and see if anything new can be done?
+x try a NN approach to this as well due to a lot of dimensionality - only after EDA & other simple models
+x don't touch the test data; do all work on the training data alone - split into train and val.
+x PCA? - looks like there are many dimensions
+x do everything with pandas dataframe - easier for merging with ML models
+x while testing, we must standardize the test according to the training set
+x use pipeline from sklearn for the initial preprocessing - not needed here
