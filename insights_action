@@ -12,4 +12,7 @@ Aims:
 - try a NN approach to this as well due to a lot of dimensionality - only after EDA & other simple models
 - do everything with pandas dataframe - easier for merging with ML models
 - go through scikit-learn book and see if you have covered all the methods
-- use pipeline from sklearn for the initial preprocessing 
+- use pipeline from sklearn for the initial preprocessing
+- compare with what you had done for Asana test and use that too
+- check for any outliers in any column?
+- while testing, we must standardize the test according to the training set 
