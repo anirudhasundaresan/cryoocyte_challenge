@@ -3,9 +3,9 @@ x looks like a regression problem
 x looks cleaned; although the test data has a point missing - maybe more missing data?
 
 Aims:
-- check full code and follow matrices, especially dummy encoding check
-- convert all code to Jupyter for submission - or attach them/ save plots
-- write about methods in 1 page
+x check full code and follow matrices, especially dummy encoding check
+x convert all code to Jupyter for submission - or attach them/ save plots
+x write about methods in 1 page and more general description
 x do visualizations
 x read scikit-learn book and see if anything new can be done?
 x plot learning curves

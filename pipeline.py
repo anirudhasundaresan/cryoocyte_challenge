@@ -232,7 +232,7 @@ plt.show()
 # refit with optimal_k
 refit = KNeighborsRegressor(n_neighbors=optimal_k)
 title="Learning Curves (KNeighborsRegressor)"
-# plot_learning_curve(refit, title, train_csv_final, label_train_csv, ylim=(0.6, 0.8), cv=10, n_jobs=4)
+plot_learning_curve(refit, title, train_csv_final, label_train_csv, ylim=(0.6, 0.8), cv=10, n_jobs=4)
 plt.show()
 refit = refit.fit(train_csv_final, label_train_csv)
 print("KNeighborsRegressor R^2 score: ", refit.score(train_csv_final, label_train_csv))
@@ -241,7 +241,7 @@ print("KNeighborsRegressor RMSE score: ", math.sqrt(mean_squared_error(refit.pre
 # trying Ridge because we need regularization to prevent overfitting
 ridge = RidgeCV(alphas=[1e-3, 1e-2, 1e-1, 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10])
 title="Learning Curves (Ridge regression)"
-# plot_learning_curve(ridge, title, train_csv_final, label_train_csv, ylim=(0.988, 1.0), cv=10, n_jobs=4)
+plot_learning_curve(ridge, title, train_csv_final, label_train_csv, ylim=(0.988, 1.0), cv=10, n_jobs=4)
 plt.show()
 ridge.fit(train_csv_final, label_train_csv)
 # print("Estimated regularization parameter: ", ridge.alpha_)
@@ -252,7 +252,7 @@ print("Ridge RMSE score: ", math.sqrt(mean_squared_error(ridge.predict(train_csv
 # trying Lasso because we know some features need to be removed
 lasso = LassoCV(alphas=[1e-3, 1e-2, 1e-1, 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10])
 title="Learning Curves (Lasso)"
-# plot_learning_curve(lasso, title, train_csv_final, label_train_csv, ylim=(0.988, 1.0), cv=10, n_jobs=4)
+plot_learning_curve(lasso, title, train_csv_final, label_train_csv, ylim=(0.988, 1.0), cv=10, n_jobs=4)
 plt.show()
 lasso.fit(train_csv_final, label_train_csv)
 # print("Estimated regularization parameter: ", lasso.alpha_)
@@ -263,7 +263,7 @@ print("Lasso RMSE score: ", math.sqrt(mean_squared_error(lasso.predict(train_csv
 # trying elastic net regression since there is correlation between features. We might not want to fully get rid of transformed PCA features
 regr = ElasticNetCV(l1_ratio=[.1, .3, .5, .7, .9, .95, .99, 1], cv=10, tol=0.00001)
 title="Learning Curves (ElasticNet)"
-# plot_learning_curve(regr, title, train_csv_final, label_train_csv, ylim=(0.988, 1.0), cv=10, n_jobs=4)
+plot_learning_curve(regr, title, train_csv_final, label_train_csv, ylim=(0.988, 1.0), cv=10, n_jobs=4)
 plt.show()
 regr.fit(train_csv_final, label_train_csv)
 # print("ElasticNetCV results")
