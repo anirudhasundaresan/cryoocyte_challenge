@@ -3,12 +3,10 @@ x looks like a regression problem
 x looks cleaned; although the test data has a point missing - maybe more missing data?
 
 Aims:
-- do visualizations
-- compare with what you had done for Asana test and use that too
 - check full code and follow matrices, especially dummy encoding check
-- try kmeans to get data insights?
 - convert all code to Jupyter for submission - or attach them/ save plots
 - write about methods in 1 page
+x do visualizations
 x read scikit-learn book and see if anything new can be done?
 x plot learning curves
 x check for any outliers in any column?
@@ -23,3 +21,5 @@ x while testing, we must standardize the test according to the training set
 x use pipeline from sklearn for the initial preprocessing - not needed here
 x this regression test is similar to the Kaggle challenge in that it is scored on RMSE.
 x shuffle the data before preprocessing
+xx compare with what you had done for Asana test and use that too - different model and workflow, so not doing
+xx try kmeans to get data insights? - not doing as this won't give out any information since the data is dummy data
