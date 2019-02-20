@@ -345,7 +345,7 @@ def print_to_csv(name, preds):
             fp.write(str(i))
             fp.write('\n')
 
-print("Test results: ")
+print("Storing test results: ")
 # print("KNeighborsRegressor results: ", refit.predict(test_csv_final))
 print_to_csv('KNeighborsRegressor', refit.predict(test_csv_final))
 # print("Ridge results: ", ridge.predict(test_csv_final))
