@@ -103,10 +103,10 @@ def plot_learning_curve(estimator, title, X, y, ylim=None, cv=None,
 
 
 # Reading in the data
-# train_csv = pd.read_csv("train_.csv")
+train_csv = pd.read_csv("train_.csv")
 
 # for my validation
-train_csv = pd.read_csv("train_anirudha_train.csv")
+# train_csv = pd.read_csv("train_anirudha_train.csv")
 
 # shuffling the data - just to make sure
 train_csv = train_csv.sample(frac=1).reset_index(drop=True)
@@ -285,7 +285,7 @@ print("MLP R^2 score: ", mlp_regr.score(train_csv_final, label_train_csv))
 print("MLPRegressor RMSE score: ", math.sqrt(mean_squared_error(mlp_regr.predict(train_csv_final), label_train_csv)))
 print()
 
-
+'''
 ### Validation phase (to be commented out when finalizing model - this phase used only for tuning)
 valid_csv = pd.read_csv("train_anirudha_val.csv")
 valid_csv.dropna(inplace=True)
@@ -313,7 +313,7 @@ print("ElasticNet RMSE score: ", math.sqrt(mean_squared_error(regr.predict(valid
 print("MLP R^2 score: ", mlp_regr.score(valid_csv_final, valid_labels))
 print("MLPRegressor RMSE score: ", math.sqrt(mean_squared_error(mlp_regr.predict(valid_csv_final), valid_labels)))
 print()
-
+'''
 
 ### Testing phase (to be used for final submission)
 test_csv = pd.read_csv("test_.csv")
