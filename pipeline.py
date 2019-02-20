@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LassoCV
+from sklearn.model_selection import learning_curve
 from sklearn.linear_model import RidgeCV
 from sklearn.linear_model import ElasticNetCV
 from sklearn.neural_network import MLPRegressor
@@ -14,6 +15,91 @@ from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics.scorer import make_scorer
+from pandas.plotting import scatter_matrix
+
+# function for plotting learning curves (https://scikit-learn.org/stable/auto_examples/model_selection/plot_learning_curve.html)
+def plot_learning_curve(estimator, title, X, y, ylim=None, cv=None,
+                        n_jobs=None, train_sizes=np.linspace(.1, 1.0, 5)):
+    """
+    Generate a simple plot of the test and training learning curve.
+
+    Parameters
+    ----------
+    estimator : object type that implements the "fit" and "predict" methods
+        An object of that type which is cloned for each validation.
+
+    title : string
+        Title for the chart.
+
+    X : array-like, shape (n_samples, n_features)
+        Training vector, where n_samples is the number of samples and
+        n_features is the number of features.
+
+    y : array-like, shape (n_samples) or (n_samples, n_features), optional
+        Target relative to X for classification or regression;
+        None for unsupervised learning.
+
+    ylim : tuple, shape (ymin, ymax), optional
+        Defines minimum and maximum yvalues plotted.
+
+    cv : int, cross-validation generator or an iterable, optional
+        Determines the cross-validation splitting strategy.
+        Possible inputs for cv are:
+          - None, to use the default 3-fold cross-validation,
+          - integer, to specify the number of folds.
+          - :term:`CV splitter`,
+          - An iterable yielding (train, test) splits as arrays of indices.
+
+        For integer/None inputs, if ``y`` is binary or multiclass,
+        :class:`StratifiedKFold` used. If the estimator is not a classifier
+        or if ``y`` is neither binary nor multiclass, :class:`KFold` is used.
+
+        Refer :ref:`User Guide <cross_validation>` for the various
+        cross-validators that can be used here.
+
+    n_jobs : int or None, optional (default=None)
+        Number of jobs to run in parallel.
+        ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+        ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
+        for more details.
+
+    train_sizes : array-like, shape (n_ticks,), dtype float or int
+        Relative or absolute numbers of training examples that will be used to
+        generate the learning curve. If the dtype is float, it is regarded as a
+        fraction of the maximum size of the training set (that is determined
+        by the selected validation method), i.e. it has to be within (0, 1].
+        Otherwise it is interpreted as absolute sizes of the training sets.
+        Note that for classification the number of samples usually have to
+        be big enough to contain at least one sample from each class.
+        (default: np.linspace(0.1, 1.0, 5))
+    """
+    plt.figure()
+    plt.title(title)
+    if ylim is not None:
+        plt.ylim(*ylim)
+    plt.xlabel("Training examples")
+    plt.ylabel("Score")
+    train_sizes, train_scores, test_scores = learning_curve(
+        estimator, X, y, cv=cv, n_jobs=n_jobs, train_sizes=train_sizes)
+    train_scores_mean = np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
+    plt.grid()
+
+    plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
+                     train_scores_mean + train_scores_std, alpha=0.1,
+                     color="r")
+    plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
+                     test_scores_mean + test_scores_std, alpha=0.1, color="g")
+    plt.plot(train_sizes, train_scores_mean, 'o-', color="r",
+             label="Training score")
+    plt.plot(train_sizes, test_scores_mean, 'o-', color="g",
+             label="Cross-validation score")
+
+    plt.legend(loc="best")
+    return plt
+
 
 # Reading in the data
 # train_csv = pd.read_csv("train_.csv")
@@ -72,8 +158,13 @@ train_csv.drop(['x13', 'x68', 'x91'], axis=1, inplace=True)
 x = train_csv[train_csv.columns[1:]].corr()['y'][:]
 inds = x.index.tolist()
 vals = x.tolist()
-print("Features which are most correlated with target: ", sorted(inds, key=lambda x: vals[inds.index(x)])[-10:][::-1][1:])
+attrs = sorted(inds, key=lambda x: vals[inds.index(x)])[-5:][::-1][1:]
+print("Features which are most correlated with target: ", attrs)
 print("Their corresponding abs. correlation values: ", sorted(vals, reverse=True)[1:10])
+scatter_matrix(train_csv[attrs+['y']], figsize=(12,8))
+plt.show()
+train_csv.plot(kind='scatter', x='x25', y='y', alpha=0.1)
+plt.show() # shows very strong correlation; most of data in the center.
 
 # y = train_csv[train_csv.apply(lambda x :(x-x.mean()).abs()<(3*x.std()) ).all(1)] # we can do this to check for outliers since this is now scaled data (looks like a lot of outliers)
 # removing outliers from the data is questionable, so I will leave it as it is.
@@ -138,26 +229,42 @@ plt.xlabel('Number of Neighbors K')
 plt.ylabel('RMSE KNNRegressor')
 plt.show()
 # refit with optimal_k
-refit = KNeighborsRegressor(n_neighbors=optimal_k).fit(train_csv_final, label_train_csv)
+refit = KNeighborsRegressor(n_neighbors=optimal_k)
+title="Learning Curves (KNeighborsRegressor)"
+plot_learning_curve(refit, title, train_csv_final, label_train_csv, ylim=(0.6, 0.8), cv=10, n_jobs=4)
+plt.show()
+refit = refit.fit(train_csv_final, label_train_csv)
 print("KNeighborsRegressor R^2 score: ", refit.score(train_csv_final, label_train_csv))
 print("KNeighborsRegressor RMSE score: ", math.sqrt(mean_squared_error(refit.predict(train_csv_final), label_train_csv)))
 
 # trying Ridge because we need regularization to prevent overfitting
-ridge = RidgeCV(alphas=[1e-3, 1e-2, 1e-1, 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10]).fit(train_csv_final, label_train_csv)
+ridge = RidgeCV(alphas=[1e-3, 1e-2, 1e-1, 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10])
+title="Learning Curves (Ridge regression)"
+plot_learning_curve(ridge, title, train_csv_final, label_train_csv, ylim=(0.988, 1.0), cv=10, n_jobs=4)
+plt.show()
+ridge.fit(train_csv_final, label_train_csv)
 # print("Estimated regularization parameter: ", ridge.alpha_)
 # print("Weight vectors:", ridge.coef_)
 print("Ridge R^2 score: ", ridge.score(train_csv_final, label_train_csv))
 print("Ridge RMSE score: ", math.sqrt(mean_squared_error(ridge.predict(train_csv_final), label_train_csv)))
 
 # trying Lasso because we know some features need to be removed
-lasso = LassoCV(alphas=[1e-3, 1e-2, 1e-1, 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10]).fit(train_csv_final, label_train_csv)
+lasso = LassoCV(alphas=[1e-3, 1e-2, 1e-1, 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10])
+title="Learning Curves (Lasso)"
+plot_learning_curve(lasso, title, train_csv_final, label_train_csv, ylim=(0.988, 1.0), cv=10, n_jobs=4)
+plt.show()
+lasso.fit(train_csv_final, label_train_csv)
 # print("Estimated regularization parameter: ", lasso.alpha_)
 # print("Weight vectors:", lasso.coef_)
 print("Lasso R^2 score: ", lasso.score(train_csv_final, label_train_csv))
 print("Lasso RMSE score: ", math.sqrt(mean_squared_error(lasso.predict(train_csv_final), label_train_csv)))
 
 # trying elastic net regression since there is correlation between features. We might not want to fully get rid of transformed PCA features
-regr = ElasticNetCV(l1_ratio=[.1, .3, .5, .7, .9, .95, .99, 1], cv=10, tol=0.00001).fit(train_csv_final, label_train_csv)
+regr = ElasticNetCV(l1_ratio=[.1, .3, .5, .7, .9, .95, .99, 1], cv=10, tol=0.00001)
+title="Learning Curves (ElasticNet)"
+plot_learning_curve(regr, title, train_csv_final, label_train_csv, ylim=(0.988, 1.0), cv=10, n_jobs=4)
+plt.show()
+regr.fit(train_csv_final, label_train_csv)
 # print("ElasticNetCV results")
 # print("Coefficients are: ", regr.coef_)
 # print("MSE path", regr.mse_path_)
@@ -165,8 +272,12 @@ regr = ElasticNetCV(l1_ratio=[.1, .3, .5, .7, .9, .95, .99, 1], cv=10, tol=0.000
 print("ElasticNet R^2 score: ", regr.score(train_csv_final, label_train_csv))
 print("ElasticNet RMSE score: ", math.sqrt(mean_squared_error(regr.predict(train_csv_final), label_train_csv)))
 
-# trying MLP to fit the non-linearity
-mlp_regr = MLPRegressor(hidden_layer_sizes=(10, 2)).fit(train_csv_final, label_train_csv)
+# trying MLP to fit the non-linearity - bonus model
+mlp_regr = MLPRegressor(hidden_layer_sizes=(10, 2))
+# title="Learning Curves (KNeighborsRegressor)"
+# plot_learning_curve(mlp_regr, title, train_csv_final, label_train_csv, ylim=(0.0, 1.01), cv=10, n_jobs=4)
+# plt.show()
+mlp_regr.fit(train_csv_final, label_train_csv)
 # print("Loss: ", mlp_regr.loss_)
 # print("Weight mx: ", mlp_regr.coefs_)
 print("MLP R^2 score: ", mlp_regr.score(train_csv_final, label_train_csv))

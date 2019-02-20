@@ -4,13 +4,13 @@ x looks cleaned; although the test data has a point missing - maybe more missing
 
 Aims:
 - do visualizations
-- go through scikit-learn book and see if you have covered all the methods
 - compare with what you had done for Asana test and use that too
-- read scikit-learn book and see if anything new can be done?
 - check full code and follow matrices, especially dummy encoding check
 - try kmeans to get data insights?
 - convert all code to Jupyter for submission - or attach them/ save plots
 - write about methods in 1 page
+x read scikit-learn book and see if anything new can be done?
+x plot learning curves
 x check for any outliers in any column?
 x check patterns/ correlations between different columns and targets; and between columns
 x try KNNregressor after PCA - since the points may mean dots on the fish skin
